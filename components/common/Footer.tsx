@@ -37,3 +37,30 @@ const Footer: React.FC = () => {
 };
 
 export default Footer;
+
+// In src/components/common/Footer.tsx
+
+import React from 'react';
+
+// Vite exposes environment variables on the `import.meta.env` object.
+const appVersion = import.meta.env.VITE_APP_VERSION;
+
+const Footer: React.FC = () => {
+  return (
+    <footer className="bg-gray-100 dark:bg-gray-800 text-center p-4 mt-auto text-sm text-gray-500 dark:text-gray-400">
+      <div className="container mx-auto">
+        <p>
+          <span>&copy; {new Date().getFullYear()} Leipnar</span>
+          {/* This will only render the version if it exists */}
+          {appVersion && (
+            <span className="ml-4">
+              Version: {appVersion}
+            </span>
+          )}
+        </p>
+      </div>
+    </footer>
+  );
+};
+
+export default Footer;
