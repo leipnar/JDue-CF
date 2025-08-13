@@ -1,6 +1,8 @@
+# Update the wrangler.toml file with the correct compatibility settings
+cat > wrangler.toml << 'EOF'
 name = "jdue-api"
 main = "worker/index.js"
-compatibility_date = "2024-08-13"
+compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 
 [[d1_databases]]
@@ -10,7 +12,11 @@ database_id = "4ecd4b97-a70c-4c18-9065-18e915be250a"
 
 [vars]
 ENVIRONMENT = "production"
-FRONTEND_URL = "https://jdue-cfv.pages.dev"  # Will update with custom domain later
+FRONTEND_URL = "https://jdue-cfv.pages.dev"
 
 [build]
 command = ""
+
+# Add Node.js compatibility
+node_compat = true
+EOF
