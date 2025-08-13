@@ -1,4 +1,16 @@
+name = "jdue-api"
+main = "worker/index.js"
+compatibility_date = "2024-08-13"
+compatibility_flags = ["nodejs_compat"]
+
 [[d1_databases]]
 binding = "DB" # This makes the database available in your code as env.DB
 database_name = "jdue-production-db"
 database_id = "4ecd4b97-a70c-4c18-9065-18e915be250a"
+
+[vars]
+ENVIRONMENT = "production"
+FRONTEND_URL = "https://jdue-cfv.pages.dev"  # Will update with custom domain later
+
+[build]
+command = ""
