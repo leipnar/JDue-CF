@@ -1,1 +1,4 @@
-©
+[[d1_databases]]
+binding = "DB" # This makes the database available in your code as env.DB
+database_name = "jdue-db"
+database_id = "38b85ec1-fe89-4d1f-9320-b985e95b0907"
