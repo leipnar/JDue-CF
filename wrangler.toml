@@ -1,4 +1,4 @@
 [[d1_databases]]
 binding = "DB" # This makes the database available in your code as env.DB
 database_name = "jdue-production-db"
-database_id = "6c56489e-5223-4ffd-9ba6-f79699dfc8bc"
+database_id = "4ecd4b97-a70c-4c18-9065-18e915be250a"
