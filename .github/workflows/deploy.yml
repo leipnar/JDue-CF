@@ -1,0 +1,53 @@
+# .github/workflows/deploy.yml
+
+name: Build and Deploy to Cloudflare
+
+# This section is the key change.
+# "workflow_dispatch" adds a "Run workflow" button on the Actions tab in GitHub.
+# This allows you to trigger the deployment manually whenever you want.
+on:
+  workflow_dispatch:
+    # You can add inputs here if you want to pass information (like a version number)
+    # when you manually run the workflow. For now, we'll keep it simple.
+    inputs:
+      version:
+        description: 'The version to deploy (e.g., v1.0.2)'
+        required: true
+        default: 'v-manual-deploy'
+
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      # Step 1: Checks out your repository's code so the job can access it
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Step 2: Sets up the specific version of Node.js needed for your project
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18 # A stable, long-term support version
+
+      # Step 3: Installs all project dependencies from your package.json file
+      # Using "npm ci" is faster and safer for automation than "npm install"
+      - name: Install dependencies
+        run: npm ci
+
+      # Step 4: Builds your React application for production
+      # This command should match the "build" script in your package.json
+      - name: Build application
+        run: npm run build
+
+      # Step 5: Deploys your project to Cloudflare
+      # This action uses your wrangler.toml file for configuration
+      - name: Deploy to Cloudflare
+        uses: cloudflare/wrangler-action@v3
+        with:
+          # You must add these secrets to your GitHub repository for this to work!
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

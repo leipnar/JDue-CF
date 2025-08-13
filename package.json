@@ -1,0 +1,20 @@
+{
+  "name": "jdue-cfv",
+  "version": "1.0.2",
+  "private": true,
+  "description": "Full-stack to-do application for Cloudflare Pages (CFV of JDue)",
+  "scripts": {
+    "deploy": "wrangler pages deploy . --commit-dirty=true",
+    "db:migrate": "wrangler d1 execute jdue-cfv-db --file=./schema.sql",
+    "dev": "wrangler pages dev . --d1=jdue-cfv-db"
+  },
+  "dependencies": {
+    "@tsndr/cloudflare-worker-jwt": "^2.2.1",
+    "bcryptjs": "^2.4.3",
+    "itty-router": "^4.0.23",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "wrangler": "^3.60.0"
+  }
+}

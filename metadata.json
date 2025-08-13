@@ -1,0 +1,9 @@
+{
+  "name": "CFV of JDue",
+  "appName": "JDue",
+  "version": "1.0.2",
+  "copyrightHolder": "Leipnar",
+  "description": "A powerful, multi-user full-stack to-do web application with project organization, recurring tasks, reminders, notifications, and a dark mode. Deployed on Cloudflare.",
+  "requestFramePermissions": [],
+  "prompt": ""
+}
