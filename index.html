@@ -1,13 +1,101 @@
 <!DOCTYPE html>
-<html>
-<head>
-    <title>JDue Test</title>
-</head>
-<body>
-    <h1>JDue App - Test Page</h1>
-    <p>If you can see this, the deployment is working!</p>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>JDue Todo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        console.log('Test page loaded successfully');
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+            },
+            colors: {
+              'primary': {
+                '50': '#eff6ff', '100': '#dbeafe', '200': '#bfdbfe', '300': '#93c5fd',
+                '400': '#60a5fa', '500': '#3b82f6', '600': '#2563eb', '700': '#1d4ed8',
+                '800': '#1e40af', '900': '#1e3a8a', '950': '#172554'
+              },
+              'secondary': {
+                '50': '#f5f3ff', '100': '#ede9fe', '200': '#ddd6fe', '300': '#c4b5fd',
+                '400': '#a78bfa', '500': '#8b5cf6', '600': '#7c3aed', '700': '#6d28d9',
+                '800': '#5b21b6', '900': '#4c1d95', '950': '#2e1065'
+              },
+              'light-bg': '#f1f5f9',
+              'light-card': '#ffffff',
+              'dark-bg': '#020617',
+              'dark-card': '#0f172a',
+              'dark-border': '#1e293b',
+            },
+            backgroundImage: {
+               'login-gradient': 'linear-gradient(to top right, #3b82f6, #8b5cf6)',
+               'body-gradient-light': 'radial-gradient(circle at top, #e0e7ff, #f1f5f9 30%)',
+               'body-gradient-dark': 'radial-gradient(circle at top, #1e293b, #020617 40%)'
+            },
+            animation: {
+                'fade-in': 'fadeIn 0.5s ease-in-out',
+                'slide-in-up': 'slideInUp 0.5s cubic-bezier(0.25, 1, 0.5, 1)',
+            },
+            keyframes: {
+                fadeIn: {
+                    '0%': { opacity: '0' },
+                    '100%': { opacity: '1' },
+                },
+                slideInUp: {
+                    '0%': { transform: 'translateY(30px)', opacity: '0' },
+                    '100%': { transform: 'translateY(0)', opacity: '1' },
+                }
+            }
+          }
+        }
+      }
     </script>
-</body>
+    <script type="importmap">
+    {
+      "imports": {
+        "react": "https://esm.sh/react@18.2.0",
+        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
+        "uuid": "https://esm.sh/uuid@9.0.0"
+      }
+    }
+    </script>
+    <style>
+      /* Basic CSS instead of missing index.css */
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: 'Inter', sans-serif;
+      }
+      
+      * {
+        box-sizing: border-box;
+      }
+      
+      .bg-light-bg {
+        background-color: #f1f5f9;
+      }
+      
+      .dark .bg-light-bg {
+        background-color: #020617;
+      }
+      
+      .text-slate-800 {
+        color: #1e293b;
+      }
+      
+      .dark .text-slate-800 {
+        color: #e2e8f0;
+      }
+    </style>
+  </head>
+  <body class="bg-light-bg text-slate-800 font-sans">
+    <div id="root"></div>
+    <script type="module" src="./index.js"></script>
+  </body>
 </html>
