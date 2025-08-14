@@ -2,7 +2,7 @@ import jwt from '@tsndr/cloudflare-worker-jwt';
 import { DatabaseService } from '../services/database.js';
 
 export const corsHeaders = {
-  'Access-Control-Allow-Origin': '*', // We'll update this after Pages deployment
+  'Access-Control-Allow-Origin': '*', // Allow all origins for now
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',

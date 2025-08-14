@@ -15,7 +15,7 @@ router.get('/api/health', () => {
   return new Response(JSON.stringify({ 
     status: 'ok', 
     timestamp: new Date().toISOString(),
-    version: '1.0.2'
+    version: '1.0.0'
   }), {
     headers: { 'Content-Type': 'application/json', ...corsHeaders }
   });
@@ -32,17 +32,6 @@ router.post('/api/auth/register', (request, env, ctx) => {
   return authRoutes.handle(newRequest, env, ctx);
 });
 
-// User profile and data routes
-router.get('/api/users/me', (request, env, ctx) => {
-  const newRequest = new Request(request.url.replace('/api', ''), request);
-  return authRoutes.handle(newRequest, env, ctx);
-});
-
-router.get('/api/data', (request, env, ctx) => {
-  const newRequest = new Request(request.url.replace('/api', ''), request);
-  return authRoutes.handle(newRequest, env, ctx);
-});
-
 // Project routes
 router.get('/api/projects', (request, env, ctx) => {
   const newRequest = new Request(request.url.replace('/api/projects', '/'), request);
@@ -51,16 +40,6 @@ router.get('/api/projects', (request, env, ctx) => {
 
 router.post('/api/projects', (request, env, ctx) => {
   const newRequest = new Request(request.url.replace('/api/projects', '/'), request);
-  return projectRoutes.handle(newRequest, env, ctx);
-});
-
-router.put('/api/projects/:id', (request, env, ctx) => {
-  const newRequest = new Request(request.url.replace('/api/projects', ''), request);
-  return projectRoutes.handle(newRequest, env, ctx);
-});
-
-router.delete('/api/projects/:id', (request, env, ctx) => {
-  const newRequest = new Request(request.url.replace('/api/projects', ''), request);
   return projectRoutes.handle(newRequest, env, ctx);
 });
 
@@ -75,16 +54,6 @@ router.post('/api/tasks', (request, env, ctx) => {
   return taskRoutes.handle(newRequest, env, ctx);
 });
 
-router.put('/api/tasks/:id', (request, env, ctx) => {
-  const newRequest = new Request(request.url.replace('/api/tasks', ''), request);
-  return taskRoutes.handle(newRequest, env, ctx);
-});
-
-router.delete('/api/tasks/:id', (request, env, ctx) => {
-  const newRequest = new Request(request.url.replace('/api/tasks', ''), request);
-  return taskRoutes.handle(newRequest, env, ctx);
-});
-
 // Admin routes
 router.get('/api/admin/users', (request, env, ctx) => {
   const newRequest = new Request(request.url.replace('/api/admin', ''), request);
@@ -92,26 +61,6 @@ router.get('/api/admin/users', (request, env, ctx) => {
 });
 
 router.get('/api/admin/stats', (request, env, ctx) => {
-  const newRequest = new Request(request.url.replace('/api/admin', ''), request);
-  return adminRoutes.handle(newRequest, env, ctx);
-});
-
-router.post('/api/admin/users', (request, env, ctx) => {
-  const newRequest = new Request(request.url.replace('/api/admin', ''), request);
-  return adminRoutes.handle(newRequest, env, ctx);
-});
-
-router.delete('/api/admin/users/:id', (request, env, ctx) => {
-  const newRequest = new Request(request.url.replace('/api/admin', ''), request);
-  return adminRoutes.handle(newRequest, env, ctx);
-});
-
-router.put('/api/admin/users/:id/status', (request, env, ctx) => {
-  const newRequest = new Request(request.url.replace('/api/admin', ''), request);
-  return adminRoutes.handle(newRequest, env, ctx);
-});
-
-router.get('/api/admin/data', (request, env, ctx) => {
   const newRequest = new Request(request.url.replace('/api/admin', ''), request);
   return adminRoutes.handle(newRequest, env, ctx);
 });
@@ -127,8 +76,10 @@ router.all('*', () => {
 export default {
   async fetch(request, env, ctx) {
     try {
+      // Handle the request
       const response = await router.handle(request, env, ctx);
       
+      // Add CORS headers to all responses
       if (response) {
         Object.entries(corsHeaders).forEach(([key, value]) => {
           response.headers.set(key, value);
@@ -148,3 +99,15 @@ export default {
     }
   }
 };
+
+// Add user profile route
+router.get('/api/users/me', (request, env, ctx) => {
+  const newRequest = new Request(request.url.replace('/api', ''), request);
+  return authRoutes.handle(newRequest, env, ctx);
+});
+
+// Add data route  
+router.get('/api/data', (request, env, ctx) => {
+  const newRequest = new Request(request.url.replace('/api', ''), request);
+  return authRoutes.handle(newRequest, env, ctx);
+});

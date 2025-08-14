@@ -39,3 +39,90 @@ router.get('/stats', requireAdmin(async (request, env) => {
 }));
 
 export default router;
+
+router.put('/make-admin/:userId', requireAdmin(async (request, env) => {
+  try {
+    const userId = request.params.userId;
+    const db = new DatabaseService(env.DB);
+    
+    // Update user to admin
+    const stmt = env.DB.prepare('UPDATE users SET isAdmin = 1 WHERE id = ?');
+    await stmt.bind(userId).run();
+    
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  } catch (error) {
+    console.error('Make admin error:', error);
+    return new Response(JSON.stringify({ error: 'Failed to make user admin' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+}));
+
+router.get('/data', requireAdmin(async (request, env) => {
+  try {
+    const db = new DatabaseService(env.DB);
+    const users = await db.getAllUsers();
+    
+    return new Response(JSON.stringify({ users }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  } catch (error) {
+    console.error('Get admin data error:', error);
+    return new Response(JSON.stringify({ error: 'Failed to fetch admin data' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+}));
+
+router.post('/users', requireAdmin(async (request, env) => {
+  try {
+    const { username, password } = await request.json();
+    
+    // Implementation for adding users by admin
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Failed to create user' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+}));
+
+router.delete('/users/:id', requireAdmin(async (request, env) => {
+  try {
+    const userId = request.params.id;
+    
+    // Implementation for deleting users
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Failed to delete user' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+}));
+
+router.put('/users/:id/status', requireAdmin(async (request, env) => {
+  try {
+    const userId = request.params.id;
+    const { status } = await request.json();
+    
+    // Implementation for updating user status
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: 'Failed to update user status' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+}));

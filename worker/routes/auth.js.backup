@@ -164,7 +164,9 @@ router.post('/register', async (request, env) => {
   }
 });
 
-// User profile endpoint
+export default router;
+
+// Add user profile endpoint
 router.get('/users/me', async (request, env) => {
   try {
     const authHeader = request.headers.get('Authorization');
@@ -214,7 +216,7 @@ router.get('/users/me', async (request, env) => {
   }
 });
 
-// Data endpoint
+// Add data endpoint
 router.get('/data', async (request, env) => {
   try {
     const authHeader = request.headers.get('Authorization');
@@ -255,5 +257,3 @@ router.get('/data', async (request, env) => {
     });
   }
 });
-
-export default router;

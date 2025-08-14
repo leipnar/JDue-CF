@@ -114,3 +114,113 @@ router.delete('/:id', requireAuth(async (request, env) => {
 }));
 
 export default router;
+router.put('/:id', requireAuth(async (request, env) => {
+  try {
+    const projectId = request.params.id;
+    const updates = await request.json();
+    
+    // Validate updates
+    const allowedFields = ['name', 'description', 'color'];
+    const validUpdates = {};
+    
+    for (const [key, value] of Object.entries(updates)) {
+      if (allowedFields.includes(key) && value !== undefined) {
+        validUpdates[key] = typeof value === 'string' ? value.trim() : value;
+      }
+    }
+    
+    if (Object.keys(validUpdates).length === 0) {
+      return new Response(JSON.stringify({ error: 'No valid fields to update' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    const db = new DatabaseService(env.DB);
+    await db.updateProject(projectId, request.user.id, validUpdates);
+    
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  } catch (error) {
+    console.error('Update project error:', error);
+    return new Response(JSON.stringify({ error: error.message || 'Failed to update project' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+}));
+
+router.delete('/:id', requireAuth(async (request, env) => {
+  try {
+    const projectId = request.params.id;
+    const db = new DatabaseService(env.DB);
+    
+    await db.deleteProject(projectId, request.user.id);
+    
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  } catch (error) {
+    console.error('Delete project error:', error);
+    return new Response(JSON.stringify({ error: error.message || 'Failed to delete project' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+}));
+
+router.put('/:id', requireAuth(async (request, env) => {
+  try {
+    const projectId = request.params.id;
+    const updates = await request.json();
+    
+    const allowedFields = ['name', 'description', 'color'];
+    const validUpdates = {};
+    
+    for (const [key, value] of Object.entries(updates)) {
+      if (allowedFields.includes(key) && value !== undefined) {
+        validUpdates[key] = typeof value === 'string' ? value.trim() : value;
+      }
+    }
+    
+    if (Object.keys(validUpdates).length === 0) {
+      return new Response(JSON.stringify({ error: 'No valid fields to update' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    const db = new DatabaseService(env.DB);
+    await db.updateProject(projectId, request.user.id, validUpdates);
+    
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  } catch (error) {
+    console.error('Update project error:', error);
+    return new Response(JSON.stringify({ error: error.message || 'Failed to update project' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+}));
+
+router.delete('/:id', requireAuth(async (request, env) => {
+  try {
+    const projectId = request.params.id;
+    const db = new DatabaseService(env.DB);
+    
+    await db.deleteProject(projectId, request.user.id);
+    
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  } catch (error) {
+    console.error('Delete project error:', error);
+    return new Response(JSON.stringify({ error: error.message || 'Failed to delete project' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+}));
