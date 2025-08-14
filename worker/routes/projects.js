@@ -44,7 +44,7 @@ router.post('/', requireAuth(async (request, env) => {
     const db = new DatabaseService(env.DB);
     const project = await db.createProject(projectData);
     
-    return new Response(JSON.stringify(project), {
+    return new Response(JSON.stringify({newProject: project}), {
       status: 201,
       headers: { 'Content-Type': 'application/json', ...corsHeaders }
     });

@@ -192,7 +192,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }, []);
     
     const addProject = useCallback(async (name: string): Promise<Project> => {
-        const newProject = await apiFetch('/projects', {
+        const { newProject } = await apiFetch('/projects', {
             method: 'POST',
             body: JSON.stringify({ name }),
         });
@@ -204,7 +204,7 @@ export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const endpoint = taskData.id ? `/tasks/${taskData.id}` : '/tasks';
         const method = taskData.id ? 'PUT' : 'POST';
 
-        const savedTask = await apiFetch(endpoint, {
+        const { savedTask } = await apiFetch(endpoint, {
             method,
             body: JSON.stringify(taskData),
         });

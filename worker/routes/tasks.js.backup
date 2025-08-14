@@ -60,7 +60,7 @@ router.post('/', requireAuth(async (request, env) => {
     const db = new DatabaseService(env.DB);
     const task = await db.createTask(taskData);
     
-    return new Response(JSON.stringify({savedTask: task}), {
+    return new Response(JSON.stringify(task), {
       status: 201,
       headers: { 'Content-Type': 'application/json', ...corsHeaders }
     });
