@@ -1,11 +1,11 @@
--- Users table with enhanced security features
+-- Users table
 CREATE TABLE users (
     id TEXT PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
     email TEXT UNIQUE NOT NULL,
     passwordHash TEXT NOT NULL,
     isAdmin INTEGER DEFAULT 0,
-    status TEXT DEFAULT 'active' CHECK (status IN ('active', 'inactive', 'banned')),
+    status TEXT DEFAULT 'active',
     passkeys_json TEXT DEFAULT '[]',
     createdAt TEXT DEFAULT (datetime('now')),
     lastLogin TEXT,
@@ -13,7 +13,7 @@ CREATE TABLE users (
     lastLoginAttempt TEXT
 );
 
--- Projects table with user relationship
+-- Projects table
 CREATE TABLE projects (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -25,17 +25,17 @@ CREATE TABLE projects (
     FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Tasks table with comprehensive features
+-- Tasks table
 CREATE TABLE tasks (
     id TEXT PRIMARY KEY,
     title TEXT NOT NULL,
     description TEXT,
     completed INTEGER DEFAULT 0,
-    priority TEXT DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high', 'urgent')),
+    priority TEXT DEFAULT 'medium',
     dueDate TEXT,
-    labels TEXT DEFAULT '[]', -- JSON array of labels
-    reminder TEXT, -- ISO datetime string
-    recurrence TEXT, -- JSON object for recurrence rules
+    labels TEXT DEFAULT '[]',
+    reminder TEXT,
+    recurrence TEXT,
     projectId TEXT NOT NULL,
     userId TEXT NOT NULL,
     createdAt TEXT DEFAULT (datetime('now')),
@@ -44,11 +44,9 @@ CREATE TABLE tasks (
     FOREIGN KEY (userId) REFERENCES users(id) ON DELETE CASCADE
 );
 
--- Create indexes for better performance
+-- Indexes
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_projects_userId ON projects(userId);
 CREATE INDEX idx_tasks_userId ON tasks(userId);
 CREATE INDEX idx_tasks_projectId ON tasks(projectId);
-CREATE INDEX idx_tasks_dueDate ON tasks(dueDate);
-CREATE INDEX idx_tasks_completed ON tasks(completed);

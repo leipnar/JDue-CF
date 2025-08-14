@@ -1,6 +1,6 @@
 // A simple API client to interact with the backend.
 
-const API_BASE_URL = '/api'; // Use a relative path for proxying
+const API_BASE_URL = 'https://jdue-api.ditrust.workers.dev/api';
 
 const getAuthToken = (): string | null => {
     if (typeof window === 'undefined') return null;

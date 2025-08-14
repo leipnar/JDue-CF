@@ -1,0 +1,11 @@
+{
+  "name": "jdue-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "itty-router": "^4.0.25",
+    "@tsndr/cloudflare-worker-jwt": "^2.4.3",
+    "uuid": "^9.0.1"
+  }
+}
+
