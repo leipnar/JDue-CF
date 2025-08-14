@@ -2,6 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JDue Todo</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -27,11 +28,11 @@
                 '400': '#a78bfa', '500': '#8b5cf6', '600': '#7c3aed', '700': '#6d28d9',
                 '800': '#5b21b6', '900': '#4c1d95', '950': '#2e1065'
               },
-              'light-bg': '#f1f5f9',
+              'light-bg': '#f1f5f9', // slate-100
               'light-card': '#ffffff',
-              'dark-bg': '#020617',
-              'dark-card': '#0f172a',
-              'dark-border': '#1e293b',
+              'dark-bg': '#020617', // slate-950
+              'dark-card': '#0f172a', // slate-900
+              'dark-border': '#1e293b', // slate-800
             },
             backgroundImage: {
                'login-gradient': 'linear-gradient(to top right, #3b82f6, #8b5cf6)',
@@ -56,46 +57,24 @@
         }
       }
     </script>
-    <script type="importmap">
-    {
-      "imports": {
-        "react": "https://esm.sh/react@18.2.0",
-        "react-dom/client": "https://esm.sh/react-dom@18.2.0/client",
-        "uuid": "https://esm.sh/uuid@9.0.0"
-      }
-    }
-    </script>
-    <style>
-      /* Basic CSS instead of missing index.css */
-      body {
-        margin: 0;
-        padding: 0;
-        font-family: 'Inter', sans-serif;
-      }
-      
-      * {
-        box-sizing: border-box;
-      }
-      
-      .bg-light-bg {
-        background-color: #f1f5f9;
-      }
-      
-      .dark .bg-light-bg {
-        background-color: #020617;
-      }
-      
-      .text-slate-800 {
-        color: #1e293b;
-      }
-      
-      .dark .text-slate-800 {
-        color: #e2e8f0;
-      }
-    </style>
-  </head>
-  <body class="bg-light-bg text-slate-800 font-sans">
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.1.0/",
+    "react/": "https://esm.sh/react@^19.1.0/",
+    "react": "https://esm.sh/react@^19.1.0",
+    "uuid": "https://esm.sh/uuid@^11.1.0",
+    "bcryptjs": "https://esm.sh/bcryptjs@^3.0.2",
+    "itty-router": "https://esm.sh/itty-router@^5.0.22",
+    "@tsndr/cloudflare-worker-jwt": "https://esm.sh/@tsndr/cloudflare-worker-jwt@^3.2.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-light-bg dark:bg-dark-bg text-slate-800 dark:text-slate-200 font-sans">
     <div id="root"></div>
-    <script type="module" src="./index.js"></script>
-  </body>
+    <script type="module" src="./index.tsx"></script>
+  <script type="module" src="/index.tsx"></script>
+</body>
 </html>
