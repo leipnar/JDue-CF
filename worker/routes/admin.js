@@ -126,3 +126,42 @@ router.put('/users/:id/status', requireAdmin(async (request, env) => {
     });
   }
 }));
+
+router.put('/users/:id/username', requireAdmin(async (request, env) => {
+  try {
+    const userId = request.params.id;
+    const { username } = await request.json();
+    
+    if (!username || !username.trim()) {
+      return new Response(JSON.stringify({ error: 'Username is required' }), {
+        status: 400,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+
+    const db = new DatabaseService(env.DB);
+    
+    // Check if username already exists
+    const existingUser = await db.db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').bind(username.trim(), userId).first();
+    
+    if (existingUser) {
+      return new Response(JSON.stringify({ error: 'Username already exists' }), {
+        status: 409,
+        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      });
+    }
+    
+    // Update username
+    await db.db.prepare('UPDATE users SET username = ? WHERE id = ?').bind(username.trim(), userId).run();
+    
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  } catch (error) {
+    console.error('Update username error:', error);
+    return new Response(JSON.stringify({ error: 'Failed to update username' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    });
+  }
+}));
