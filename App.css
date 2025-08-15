@@ -1,0 +1,22 @@
+/* App.css - Basic styles for JDue Todo App */
+
+/* Tailwind directives */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom animations */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+/* Dark mode support */
+.dark {
+  color-scheme: dark;
+}

@@ -3,7 +3,6 @@ import { DataProvider, useDataContext } from './context/DataContext';
 import Sidebar from './components/Sidebar';
 import AdminDashboard from './components/AdminDashboard';
 import Icon from './components/common/Icon';
-import './App.css';
 
 // Project Management Component
 const ProjectsView: React.FC = () => {
