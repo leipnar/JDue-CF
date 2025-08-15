@@ -1,266 +1,289 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
-import { User, Project, Task } from '../types';
-import apiFetch from '../services/api';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
-// --- Token Management ---
-const TOKEN_KEY = 'todo_auth_token';
-
-const getAuthToken = (): string | null => {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem(TOKEN_KEY);
+interface User {
+  id: number;
+  username: string;
+  email: string;
+  isAdmin: boolean;
 }
-const setAuthToken = (token: string) => localStorage.setItem(TOKEN_KEY, token);
-const removeAuthToken = () => localStorage.removeItem(TOKEN_KEY);
 
-// --- Context Definition ---
+interface Project {
+  id: number;
+  name: string;
+  description?: string;
+  userId: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Task {
+  id: number;
+  title: string;
+  description?: string;
+  completed: boolean;
+  priority: 'low' | 'medium' | 'high';
+  projectId?: number;
+  userId: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface DataContextType {
-    // State
-    currentUser: User | null;
-    projects: Project[];
-    tasks: Task[];
-    users: User[]; // For admin view
-    isLoading: boolean;
-    
-    // Auth
-    login: (email: string, password: string) => Promise<User>;
-    passkeyLogin: (credential: PublicKeyCredential) => Promise<User>;
-    forgotPassword: (email: string) => Promise<void>;
-    logout: () => Promise<void>;
-    
-    // User Management
-    updateUser: (updatedUserData: { email?: string; currentPassword?: string; newPassword?: string }) => Promise<User>;
-    registerPasskey: (credential: PublicKeyCredential) => Promise<User>;
-    addUserByAdmin: (username: string, password: string) => Promise<User>;
-    deleteUser: (userId: string) => Promise<void>;
-    updateUserStatus: (userId: string, status: User['status']) => Promise<void>;
-
-    // Project Management
-    addProject: (name: string) => Promise<Project>;
-
-    // Task Management
-    saveTask: (taskData: Partial<Task> & { projectId: string; title: string; }) => Promise<Task>;
-    deleteTask: (taskId: string) => Promise<void>;
-    toggleTaskComplete: (task: Task) => Promise<void>;
-    markNotificationSent: (taskId: string, notificationKey: string) => Promise<void>;
-
-    // System Stats
-    getSystemStats: () => Promise<{ userCount: number; projectCount: number; taskCount: number }>;
+  user: User | null;
+  isLoading: boolean;
+  currentView: string;
+  setCurrentView: (view: string) => void;
+  login: (email: string, password: string) => Promise<void>;
+  register: (email: string, password: string, username: string) => Promise<void>;
+  logout: () => void;
+  projects: Project[];
+  tasks: Task[];
+  callAPI: (endpoint: string, method?: string, body?: any) => Promise<any>;
+  createProject: (projectData: Partial<Project>) => Promise<void>;
+  updateProject: (projectId: number, projectData: Partial<Project>) => Promise<void>;
+  deleteProject: (projectId: number) => Promise<void>;
+  createTask: (taskData: Partial<Task>) => Promise<void>;
+  updateTask: (taskId: number, taskData: Partial<Task>) => Promise<void>;
+  deleteTask: (taskId: number) => Promise<void>;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
 
-// --- Provider Component ---
+const API_BASE_URL = 'https://jdue-api.ditrust.workers.dev/api';
+
 export const DataProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [projects, setProjects] = useState<Project[]>([]);
-    const [tasks, setTasks] = useState<Task[]>([]);
-    const [users, setUsers] = useState<User[]>([]); // For admin
-    const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [currentView, setCurrentView] = useState('dashboard');
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
 
-    const loadInitialData = useCallback(async () => {
-        const token = getAuthToken();
-        if (token) {
-            try {
-                // Fetch user and their data concurrently
-                const [userData, appData] = await Promise.all([
-                    apiFetch('/users/me'),
-                    apiFetch('/data')
-                ]);
+  useEffect(() => {
+    const token = localStorage.getItem('auth_token');
+    if (token) {
+      verifyToken(token);
+    } else {
+      setIsLoading(false);
+    }
+  }, []);
 
-                setCurrentUser(userData.user);
-                setProjects(appData.projects);
-                setTasks(appData.tasks);
-                
-                // If admin, fetch admin data
-                if (userData.user.isAdmin) {
-                    const adminData = await apiFetch('/admin/data');
-                    setUsers(adminData.users);
-                }
+  const verifyToken = async (token: string) => {
+    try {
+      const response = await callAPI('/users/me', 'GET');
+      if (response.success && response.data) {
+        setUser(response.data);
+        await loadUserData();
+      } else {
+        localStorage.removeItem('auth_token');
+      }
+    } catch (error) {
+      console.error('Token verification failed:', error);
+      localStorage.removeItem('auth_token');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-            } catch (error) {
-                console.error("Session expired or invalid, logging out.", error);
-                removeAuthToken();
-                setCurrentUser(null);
-            }
-        }
-        setIsLoading(false);
-    }, []);
+  const loadUserData = async () => {
+    try {
+      const response = await callAPI('/data', 'GET');
+      if (response.success && response.data) {
+        setProjects(response.data.projects || []);
+        setTasks(response.data.tasks || []);
+      }
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    }
+  };
 
-    useEffect(() => {
-        loadInitialData();
-    }, [loadInitialData]);
-    
-    const login = useCallback(async (email: string, password: string): Promise<User> => {
-        const { token } = await apiFetch('/auth/login', {
-            method: 'POST',
-            body: JSON.stringify({ email, password }),
-        });
-        setAuthToken(token);
-        setIsLoading(true);
-        await loadInitialData();
-        // The currentUser will be set by loadInitialData, but we can return it early from the token if needed
-        const userPayload = JSON.parse(atob(token.split('.')[1]));
-        return userPayload;
-    }, [loadInitialData]);
+  const callAPI = async (endpoint: string, method: string = 'GET', body?: any) => {
+    try {
+      const token = localStorage.getItem('auth_token');
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json',
+      };
 
-    const passkeyLogin = useCallback(async (credential: PublicKeyCredential) => {
-        const response = credential.response as AuthenticatorAssertionResponse;
-        const { token } = await apiFetch('/auth/passkey-login', {
-            method: 'POST',
-            body: JSON.stringify({
-                id: credential.id,
-                rawId: Array.from(new Uint8Array(credential.rawId)),
-                response: {
-                    clientDataJSON: Array.from(new Uint8Array(response.clientDataJSON)),
-                    authenticatorData: Array.from(new Uint8Array(response.authenticatorData)),
-                    signature: Array.from(new Uint8Array(response.signature)),
-                    userHandle: response.userHandle ? Array.from(new Uint8Array(response.userHandle)) : null,
-                },
-                type: credential.type,
-            }),
-        });
-        setAuthToken(token);
-        setIsLoading(true);
-        await loadInitialData();
-        const userPayload = JSON.parse(atob(token.split('.')[1]));
-        return userPayload;
-    }, [loadInitialData]);
-    
-    const forgotPassword = useCallback(async (email: string): Promise<void> => {
-        await apiFetch('/auth/forgot-password', {
-            method: 'POST',
-            body: JSON.stringify({ email }),
-        });
-    }, []);
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
 
-    const logout = useCallback(async (): Promise<void> => {
-        removeAuthToken();
-        setCurrentUser(null);
-        setProjects([]);
-        setTasks([]);
-        setUsers([]);
-    }, []);
+      const config: RequestInit = {
+        method,
+        headers,
+      };
 
-    const updateUser = useCallback(async (updatedUserData: { email?: string; currentPassword?: string; newPassword?: string; }): Promise<User> => {
-        const { updatedUser } = await apiFetch('/users/me', {
-            method: 'PUT',
-            body: JSON.stringify(updatedUserData),
-        });
-        setCurrentUser(updatedUser);
-        return updatedUser;
-    }, []);
-    
-    const registerPasskey = useCallback(async (credential: PublicKeyCredential) => {
-        const response = credential.response as AuthenticatorAttestationResponse;
-        const { updatedUser } = await apiFetch('/users/me/passkeys', {
-            method: 'POST',
-            body: JSON.stringify({
-                 id: credential.id,
-                rawId: Array.from(new Uint8Array(credential.rawId)),
-                response: {
-                    clientDataJSON: Array.from(new Uint8Array(response.clientDataJSON)),
-                    attestationObject: Array.from(new Uint8Array(response.attestationObject)),
-                },
-                type: credential.type,
-            }),
-        });
-        setCurrentUser(updatedUser);
-        return updatedUser;
-    }, []);
+      if (body && method !== 'GET') {
+        config.body = JSON.stringify(body);
+      }
 
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+      
+      if (response.status === 401) {
+        localStorage.removeItem('auth_token');
+        setUser(null);
+        throw new Error('Session expired or invalid, logging out.');
+      }
 
-    const addUserByAdmin = useCallback(async (username: string, password: string): Promise<User> => {
-        const { newUser } = await apiFetch('/admin/users', {
-            method: 'POST',
-            body: JSON.stringify({ username, password }),
-        });
-        setUsers(prev => [...prev, newUser]);
-        return newUser;
-    }, []);
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP error! status: ${response.status}`);
+      }
 
-    const deleteUser = useCallback(async (userId: string): Promise<void> => {
-        await apiFetch(`/admin/users/${userId}`, { method: 'DELETE' });
-        setUsers(prev => prev.filter(u => u.id !== userId));
-    }, []);
+      return data;
+    } catch (error) {
+      console.error('API call failed:', error);
+      throw error;
+    }
+  };
 
-    const updateUserStatus = useCallback(async (userId: string, status: User['status']): Promise<void> => {
-        await apiFetch(`/admin/users/${userId}/status`, {
-            method: 'PUT',
-            body: JSON.stringify({ status }),
-        });
-        setUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u));
-    }, []);
-    
-    const addProject = useCallback(async (name: string): Promise<Project> => {
-        const { newProject } = await apiFetch('/projects', {
-            method: 'POST',
-            body: JSON.stringify({ name }),
-        });
-        setProjects(prev => [...prev, newProject]);
-        return newProject;
-    }, []);
-    
-    const saveTask = useCallback(async (taskData: Partial<Task> & { projectId: string; title: string; }): Promise<Task> => {
-        const endpoint = taskData.id ? `/tasks/${taskData.id}` : '/tasks';
-        const method = taskData.id ? 'PUT' : 'POST';
+  const login = async (email: string, password: string) => {
+    try {
+      const response = await callAPI('/auth/login', 'POST', { email, password });
+      
+      if (response.success && response.data) {
+        localStorage.setItem('auth_token', response.data.token);
+        setUser(response.data.user);
+        await loadUserData();
+      } else {
+        throw new Error(response.error || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login failed:', error);
+      throw error;
+    }
+  };
 
-        const { savedTask } = await apiFetch(endpoint, {
-            method,
-            body: JSON.stringify(taskData),
-        });
-        
-        if (taskData.id) {
-            setTasks(prev => prev.map(t => t.id === savedTask.id ? savedTask : t));
-        } else {
-            setTasks(prev => [...prev, savedTask]);
-        }
-        return savedTask;
-    }, []);
-    
-    const deleteTask = useCallback(async (taskId: string): Promise<void> => {
-        await apiFetch(`/tasks/${taskId}`, { method: 'DELETE' });
+  const register = async (email: string, password: string, username: string) => {
+    try {
+      const response = await callAPI('/auth/register', 'POST', { email, password, username });
+      
+      if (response.success && response.data) {
+        localStorage.setItem('auth_token', response.data.token);
+        setUser(response.data.user);
+        await loadUserData();
+      } else {
+        throw new Error(response.error || 'Registration failed');
+      }
+    } catch (error) {
+      console.error('Registration failed:', error);
+      throw error;
+    }
+  };
+
+  const logout = () => {
+    localStorage.removeItem('auth_token');
+    setUser(null);
+    setProjects([]);
+    setTasks([]);
+    setCurrentView('dashboard');
+  };
+
+  const createProject = async (projectData: Partial<Project>) => {
+    try {
+      const response = await callAPI('/projects', 'POST', projectData);
+      if (response.success && response.data) {
+        setProjects(prev => [response.data, ...prev]);
+      }
+    } catch (error) {
+      console.error('Failed to create project:', error);
+      throw error;
+    }
+  };
+
+  const updateProject = async (projectId: number, projectData: Partial<Project>) => {
+    try {
+      const response = await callAPI(`/projects/${projectId}`, 'PUT', projectData);
+      if (response.success && response.data) {
+        setProjects(prev => prev.map(p => p.id === projectId ? response.data : p));
+      }
+    } catch (error) {
+      console.error('Failed to update project:', error);
+      throw error;
+    }
+  };
+
+  const deleteProject = async (projectId: number) => {
+    try {
+      const response = await callAPI(`/projects/${projectId}`, 'DELETE');
+      if (response.success) {
+        setProjects(prev => prev.filter(p => p.id !== projectId));
+        setTasks(prev => prev.filter(t => t.projectId !== projectId));
+      }
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      throw error;
+    }
+  };
+
+  const createTask = async (taskData: Partial<Task>) => {
+    try {
+      const response = await callAPI('/tasks', 'POST', taskData);
+      if (response.success && response.data) {
+        setTasks(prev => [response.data, ...prev]);
+      }
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      throw error;
+    }
+  };
+
+  const updateTask = async (taskId: number, taskData: Partial<Task>) => {
+    try {
+      const response = await callAPI(`/tasks/${taskId}`, 'PUT', taskData);
+      if (response.success && response.data) {
+        setTasks(prev => prev.map(t => t.id === taskId ? response.data : t));
+      }
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      throw error;
+    }
+  };
+
+  const deleteTask = async (taskId: number) => {
+    try {
+      const response = await callAPI(`/tasks/${taskId}`, 'DELETE');
+      if (response.success) {
         setTasks(prev => prev.filter(t => t.id !== taskId));
-    }, []);
+      }
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+      throw error;
+    }
+  };
 
-    const toggleTaskComplete = useCallback(async (task: Task): Promise<void> => {
-        const { updatedTask } = await apiFetch(`/tasks/${task.id}/toggle`, { method: 'POST' });
-        setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
-    }, []);
-    
-    const markNotificationSent = useCallback(async (taskId: string, notificationKey: string) => {
-        try {
-            const { updatedTask } = await apiFetch(`/tasks/${taskId}/notifications`, {
-                method: 'POST',
-                body: JSON.stringify({ notificationKey }),
-            });
-            setTasks(prev => prev.map(t => t.id === taskId ? updatedTask : t));
-        } catch (error) {
-            console.error("Failed to mark notification as sent:", error);
-        }
-    }, []);
+  const value: DataContextType = {
+    user,
+    isLoading,
+    currentView,
+    setCurrentView,
+    login,
+    register,
+    logout,
+    projects,
+    tasks,
+    callAPI,
+    createProject,
+    updateProject,
+    deleteProject,
+    createTask,
+    updateTask,
+    deleteTask,
+  };
 
-    const getSystemStats = useCallback(async () => {
-        return await apiFetch('/admin/stats');
-    }, []);
-
-    const value = {
-        currentUser, projects, tasks, users, isLoading,
-        login, passkeyLogin, forgotPassword, logout,
-        updateUser, registerPasskey,
-        addUserByAdmin, deleteUser, updateUserStatus,
-        addProject,
-        saveTask, deleteTask, toggleTaskComplete, markNotificationSent,
-        getSystemStats,
-    };
-
-    return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
+  return (
+    <DataContext.Provider value={value}>
+      {children}
+    </DataContext.Provider>
+  );
 };
 
-// --- Hook ---
-export const useData = () => {
+export const useDataContext = (): DataContextType => {
   const context = useContext(DataContext);
   if (context === undefined) {
-    throw new Error('useData must be used within a DataProvider');
+    throw new Error('useDataContext must be used within a DataProvider');
   }
   return context;
 };
+
+export default DataContext;
