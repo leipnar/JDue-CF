@@ -1,167 +1,375 @@
-import { Router } from 'itty-router';
-import { DatabaseService } from '../services/database.js';
-import { requireAdmin, corsHeaders } from '../middleware/auth.js';
+// worker/routes/admin.js
+import { authenticateUser, requireAdmin } from '../middleware/auth.js';
+import { getDatabaseService } from '../services/database.js';
 
-const router = Router();
-
-router.get('/users', requireAdmin(async (request, env) => {
+export async function handleAdminRoutes(request, env) {
+  const url = new URL(request.url);
+  const pathSegments = url.pathname.split('/').filter(Boolean);
+  
+  // Remove 'api' and 'admin' from path segments
+  const adminPath = pathSegments.slice(2).join('/');
+  
   try {
-    const db = new DatabaseService(env.DB);
-    const users = await db.getAllUsers();
-    
-    return new Response(JSON.stringify(users), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
-    });
+    // Authenticate user first
+    const authResult = await authenticateUser(request, env);
+    if (!authResult.success) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    // Check admin privileges
+    const adminCheck = await requireAdmin(authResult.user, env);
+    if (!adminCheck.success) {
+      return new Response(JSON.stringify({ error: 'Admin access required' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    const db = getDatabaseService(env.DB);
+
+    switch (request.method) {
+      case 'GET':
+        return handleAdminGet(adminPath, db);
+      case 'POST':
+        return handleAdminPost(adminPath, request, db);
+      case 'PUT':
+        return handleAdminPut(adminPath, request, db);
+      case 'DELETE':
+        return handleAdminDelete(adminPath, request, db);
+      default:
+        return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+          status: 405,
+          headers: { 'Content-Type': 'application/json' }
+        });
+    }
   } catch (error) {
-    console.error('Get users error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to fetch users' }), {
+    console.error('Admin route error:', error);
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
-}));
+}
 
-router.get('/stats', requireAdmin(async (request, env) => {
-  try {
-    const db = new DatabaseService(env.DB);
-    const stats = await db.getSystemStats();
+async function handleAdminGet(path, db) {
+  const pathParts = path.split('/');
+
+  switch (pathParts[0]) {
+    case 'users':
+      return getUsersList(db);
+    case 'stats':
+      return getAdminStats(db);
+    case 'data':
+      return getAdminData(db);
+    default:
+      return new Response(JSON.stringify({ error: 'Not found' }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+  }
+}
+
+async function handleAdminPost(path, request, db) {
+  const pathParts = path.split('/');
+  
+  if (pathParts.length >= 3 && pathParts[0] === 'users') {
+    const userId = parseInt(pathParts[1]);
+    const action = pathParts[2];
     
-    return new Response(JSON.stringify(stats), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    return handleUserAction(userId, action, db);
+  }
+
+  return new Response(JSON.stringify({ error: 'Not found' }), {
+    status: 404,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+async function handleAdminPut(path, request, db) {
+  const pathParts = path.split('/');
+  
+  if (pathParts.length >= 3 && pathParts[0] === 'users') {
+    const userId = parseInt(pathParts[1]);
+    const field = pathParts[2];
+    
+    if (field === 'username') {
+      return updateUsername(userId, request, db);
+    }
+  }
+
+  return new Response(JSON.stringify({ error: 'Not found' }), {
+    status: 404,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+async function handleAdminDelete(path, request, db) {
+  const pathParts = path.split('/');
+  
+  if (pathParts.length >= 2 && pathParts[0] === 'users') {
+    const userId = parseInt(pathParts[1]);
+    return deleteUser(userId, db);
+  }
+
+  return new Response(JSON.stringify({ error: 'Not found' }), {
+    status: 404,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
+async function getUsersList(db) {
+  try {
+    const users = await db.prepare(`
+      SELECT 
+        id, username, email, isActive, isAdmin, 
+        createdAt, lastLoginAt
+      FROM users 
+      ORDER BY createdAt DESC
+    `).all();
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: users.results || []
+    }), {
+      headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
-    console.error('Get stats error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to fetch statistics' }), {
+    console.error('Error fetching users:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to fetch users'
+    }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
-}));
+}
 
-export default router;
-
-router.put('/make-admin/:userId', requireAdmin(async (request, env) => {
+async function getAdminStats(db) {
   try {
-    const userId = request.params.userId;
-    const db = new DatabaseService(env.DB);
-    
-    // Update user to admin
-    const stmt = env.DB.prepare('UPDATE users SET isAdmin = 1 WHERE id = ?');
-    await stmt.bind(userId).run();
-    
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    const [totalUsers, activeUsers, totalTasks, totalProjects] = await Promise.all([
+      db.prepare('SELECT COUNT(*) as count FROM users').first(),
+      db.prepare('SELECT COUNT(*) as count FROM users WHERE isActive = 1').first(),
+      db.prepare('SELECT COUNT(*) as count FROM tasks').first(),
+      db.prepare('SELECT COUNT(*) as count FROM projects').first()
+    ]);
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        totalUsers: totalUsers.count || 0,
+        activeUsers: activeUsers.count || 0,
+        totalTasks: totalTasks.count || 0,
+        totalProjects: totalProjects.count || 0
+      }
+    }), {
+      headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
-    console.error('Make admin error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to make user admin' }), {
+    console.error('Error fetching admin stats:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to fetch statistics'
+    }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
-}));
+}
 
-router.get('/data', requireAdmin(async (request, env) => {
+async function getAdminData(db) {
   try {
-    const db = new DatabaseService(env.DB);
-    const users = await db.getAllUsers();
-    
-    return new Response(JSON.stringify({ users }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    const [users, stats] = await Promise.all([
+      getUsersList(db),
+      getAdminStats(db)
+    ]);
+
+    const usersData = await users.json();
+    const statsData = await stats.json();
+
+    return new Response(JSON.stringify({
+      success: true,
+      data: {
+        users: usersData.data || [],
+        stats: statsData.data || {}
+      }
+    }), {
+      headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
-    console.error('Get admin data error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to fetch admin data' }), {
+    console.error('Error fetching admin data:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to fetch admin data'
+    }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
-}));
+}
 
-router.post('/users', requireAdmin(async (request, env) => {
+async function handleUserAction(userId, action, db) {
   try {
-    const { username, password } = await request.json();
-    
-    // Implementation for adding users by admin
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+    let query = '';
+    let params = [userId];
+
+    switch (action) {
+      case 'activate':
+        query = 'UPDATE users SET isActive = 1 WHERE id = ?';
+        break;
+      case 'deactivate':
+        query = 'UPDATE users SET isActive = 0 WHERE id = ?';
+        break;
+      case 'ban':
+        query = 'UPDATE users SET isActive = 0 WHERE id = ?';
+        break;
+      case 'unban':
+        query = 'UPDATE users SET isActive = 1 WHERE id = ?';
+        break;
+      default:
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Invalid action'
+        }), {
+          status: 400,
+          headers: { 'Content-Type': 'application/json' }
+        });
+    }
+
+    const result = await db.prepare(query).bind(...params).run();
+
+    if (result.changes === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'User not found'
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: `User ${action} successful`
+    }), {
+      headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
-    return new Response(JSON.stringify({ error: 'Failed to create user' }), {
+    console.error(`Error performing user action ${action}:`, error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: `Failed to ${action} user`
+    }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
-}));
+}
 
-router.delete('/users/:id', requireAdmin(async (request, env) => {
+async function updateUsername(userId, request, db) {
   try {
-    const userId = request.params.id;
-    
-    // Implementation for deleting users
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: 'Failed to delete user' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
-    });
-  }
-}));
+    const body = await request.json();
+    const { username } = body;
 
-router.put('/users/:id/status', requireAdmin(async (request, env) => {
-  try {
-    const userId = request.params.id;
-    const { status } = await request.json();
-    
-    // Implementation for updating user status
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
-    });
-  } catch (error) {
-    return new Response(JSON.stringify({ error: 'Failed to update user status' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
-    });
-  }
-}));
-
-router.put('/users/:id/username', requireAdmin(async (request, env) => {
-  try {
-    const userId = request.params.id;
-    const { username } = await request.json();
-    
-    if (!username || !username.trim()) {
-      return new Response(JSON.stringify({ error: 'Username is required' }), {
+    if (!username || typeof username !== 'string' || username.trim().length === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Valid username is required'
+      }), {
         status: 400,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        headers: { 'Content-Type': 'application/json' }
       });
     }
 
-    const db = new DatabaseService(env.DB);
-    
-    // Check if username already exists
-    const existingUser = await db.db.prepare('SELECT id FROM users WHERE username = ? AND id != ?').bind(username.trim(), userId).first();
-    
+    const trimmedUsername = username.trim();
+
+    // Check if username is already taken by another user
+    const existingUser = await db.prepare(
+      'SELECT id FROM users WHERE username = ? AND id != ?'
+    ).bind(trimmedUsername, userId).first();
+
     if (existingUser) {
-      return new Response(JSON.stringify({ error: 'Username already exists' }), {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'Username is already taken'
+      }), {
         status: 409,
-        headers: { 'Content-Type': 'application/json', ...corsHeaders }
+        headers: { 'Content-Type': 'application/json' }
       });
     }
-    
-    // Update username
-    await db.db.prepare('UPDATE users SET username = ? WHERE id = ?').bind(username.trim(), userId).run();
-    
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+
+    // Update the username
+    const result = await db.prepare(
+      'UPDATE users SET username = ? WHERE id = ?'
+    ).bind(trimmedUsername, userId).run();
+
+    if (result.changes === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'User not found'
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'Username updated successfully'
+    }), {
+      headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
-    console.error('Update username error:', error);
-    return new Response(JSON.stringify({ error: 'Failed to update username' }), {
+    console.error('Error updating username:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to update username'
+    }), {
       status: 500,
-      headers: { 'Content-Type': 'application/json', ...corsHeaders }
+      headers: { 'Content-Type': 'application/json' }
     });
   }
-}));
+}
+
+async function deleteUser(userId, db) {
+  try {
+    // Start a transaction to delete user and related data
+    const deleteUserQuery = 'DELETE FROM users WHERE id = ?';
+    const deleteTasksQuery = 'DELETE FROM tasks WHERE userId = ?';
+    const deleteProjectsQuery = 'DELETE FROM projects WHERE userId = ?';
+
+    // Execute deletions in order (tasks first, then projects, then user)
+    await db.prepare(deleteTasksQuery).bind(userId).run();
+    await db.prepare(deleteProjectsQuery).bind(userId).run();
+    const result = await db.prepare(deleteUserQuery).bind(userId).run();
+
+    if (result.changes === 0) {
+      return new Response(JSON.stringify({
+        success: false,
+        error: 'User not found'
+      }), {
+        status: 404,
+        headers: { 'Content-Type': 'application/json' }
+      });
+    }
+
+    return new Response(JSON.stringify({
+      success: true,
+      message: 'User deleted successfully'
+    }), {
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    return new Response(JSON.stringify({
+      success: false,
+      error: 'Failed to delete user'
+    }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+}
